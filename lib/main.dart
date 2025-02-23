@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 import 'dart:html' as html;
 import 'dart:ui' as ui;
-import 'dart:js' as js;
 
-/// Entry point of the application.
+/// The entry point of the application.
 void main() {
   runApp(const MyApp());
 }
 
-/// Application itself.
+/// The main application widget.
 class MyApp extends StatelessWidget {
+  /// Creates a [MyApp] instance.
   const MyApp({super.key});
 
   @override
@@ -21,21 +21,30 @@ class MyApp extends StatelessWidget {
   }
 }
 
-/// [Widget] displaying the home page.
+/// The home page of the application.
 class HomePage extends StatefulWidget {
+  /// Creates a [HomePage] instance.
   const HomePage({super.key});
 
   @override
   State<HomePage> createState() => _HomePageState();
 }
 
-/// State of a [HomePage].
+/// The state for the [HomePage] widget.
 class _HomePageState extends State<HomePage> {
   final TextEditingController _urlController = TextEditingController();
   String? _imageUrl;
+  bool _isFullscreen = false;
   bool _isMenuOpen = false;
 
+  /// The ID for the original image element.
   static const String _imageElementId = 'image-element';
+
+  /// The ID for the fullscreen image element.
+  static const String _fullscreenImageElementId = 'fullscreen-image-element';
+
+  /// The ID for the fullscreen exit button.
+  static const String _fullscreenButtonId = 'fullscreen-button';
 
   @override
   void initState() {
@@ -46,27 +55,79 @@ class _HomePageState extends State<HomePage> {
         ..id = _imageElementId
         ..style.width = '100%'
         ..style.height = '100%'
-        ..onDoubleClick.listen((event) {
-          js.context.callMethod(
-            'toggleFullscreen',
-            [html.document.getElementById(_imageElementId)],
-          );
-        }),
+        ..style.objectFit = 'cover'
+        ..onClick.listen(
+          (event) {
+            _toggleFullscreen();
+          },
+        ),
     );
   }
 
+  /// Toggles fullscreen mode by creating or removing the fullscreen image and button.
+  void _toggleFullscreen() {
+    setState(() {
+      _isFullscreen = !_isFullscreen;
+    });
+
+    if (_isFullscreen) {
+      final originalImage = html.document.getElementById(_imageElementId) as html.ImageElement?;
+      if (originalImage != null) {
+        final fullscreenImage = html.ImageElement()
+          ..id = _fullscreenImageElementId
+          ..src = originalImage.src
+          ..style.position = 'fixed'
+          ..style.top = '0'
+          ..style.left = '0'
+          ..style.width = '100vw'
+          ..style.height = '100vh'
+          ..style.objectFit = 'cover'
+          ..style.zIndex = '9998';
+
+        final fullscreenButton = html.ButtonElement()
+          ..id = _fullscreenButtonId
+          ..text = 'Exit Fullscreen'
+          ..style.position = 'fixed'
+          ..style.right = '16px'
+          ..style.bottom = '16px'
+          ..style.zIndex = '9999'
+          ..style.backgroundColor = 'white'
+          ..style.color = 'black'
+          ..style.border = 'none'
+          ..style.padding = '12px'
+          ..style.borderRadius = '4px'
+          ..style.cursor = 'pointer'
+          ..onClick.listen((event) {
+            _toggleFullscreen();
+          });
+
+        html.document.body?.append(fullscreenImage);
+        html.document.body?.append(fullscreenButton);
+      }
+    } else {
+      final fullscreenImage = html.document.getElementById(_fullscreenImageElementId);
+      final fullscreenButton = html.document.getElementById(_fullscreenButtonId);
+      if (fullscreenImage != null) {
+        fullscreenImage.remove();
+      }
+      if (fullscreenButton != null) {
+        fullscreenButton.remove();
+      }
+    }
+  }
+
+  /// Toggles the visibility of the popup menu.
   void _toggleMenu() {
     setState(() {
       _isMenuOpen = !_isMenuOpen;
     });
   }
 
-  void _toggleFullscreen() {
-    js.context.callMethod(
-      'toggleFullscreen',
-      [html.document.getElementById(_imageElementId)],
-    );
-    _toggleMenu();
+  /// Closes the popup menu.
+  void _closeMenu() {
+    setState(() {
+      _isMenuOpen = false;
+    });
   }
 
   @override
@@ -140,30 +201,36 @@ class _HomePageState extends State<HomePage> {
           ),
           if (_isMenuOpen)
             GestureDetector(
-              onTap: _toggleMenu,
+              onTap: _closeMenu,
               child: Container(
-                color: Colors.black54,
+                color: Colors.black.withOpacity(0.5),
               ),
             ),
           if (_isMenuOpen)
             Positioned(
               right: 16,
               bottom: 80,
-              child: Column(
-                children: [
-                  ElevatedButton(
-                    onPressed: _toggleFullscreen,
-                    child: const Text('Enter Fullscreen'),
-                  ),
-                  const SizedBox(height: 8),
-                  ElevatedButton(
-                    onPressed: () {
-                      html.document.exitFullscreen();
-                      _toggleMenu();
-                    },
-                    child: const Text('Exit Fullscreen'),
-                  ),
-                ],
+              child: Card(
+                elevation: 8,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextButton(
+                      onPressed: () {
+                        _toggleFullscreen();
+                        _closeMenu();
+                      },
+                      child: const Text('Enter Fullscreen'),
+                    ),
+                    TextButton(
+                      onPressed: () {
+                        _toggleFullscreen();
+                        _closeMenu();
+                      },
+                      child: const Text('Exit Fullscreen'),
+                    ),
+                  ],
+                ),
               ),
             ),
         ],
